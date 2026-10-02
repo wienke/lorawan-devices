@@ -1,0 +1,62 @@
+# Fork-only staging preview: builds the site with the staging environment
+# (noindex, no GTM) and publishes it to this fork's GitHub Pages.
+# Lives on pages/* branches only; never part of an upstream PR.
+name: Staging Pages
+
+on:
+  push:
+    branches:
+      - 'pages/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      BASE_URL: https://wienke.github.io
+      BASE_PATH: /lorawan-devices
+      HUGO: hugo --minify --environment staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '~1.27'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.159.2'
+          extended: true
+      - name: Download Go dependencies
+        run: cd website && make go.deps
+      - name: Install Node.js dependencies
+        run: npm ci
+      - name: Build content
+        run: cd website && make go.build
+      - name: Build assets
+        run: cd website && yarn install && yarn build
+      - name: Build Hugo
+        run: cd website && make hugo.build.public
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
