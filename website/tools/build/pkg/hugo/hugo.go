@@ -74,6 +74,10 @@ func copyImage(sourceFile string, destinationFile string, e *devicerepository.En
 			return err
 		}
 
+		// The website shows the clean photo; the repository file keeps the
+		// "Works with The Things Stack" pill.
+		input = stripPill(input, sourceFile)
+
 		err = ioutil.WriteFile(destinationFile, input, 0o644)
 		if err != nil {
 			return err
